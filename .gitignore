@@ -3,6 +3,7 @@ logs/
 storage/*.sqlite3
 storage/*.db
 storage/*.csv
+!storage/forward_test_log.csv
 storage/*.txt
 __pycache__/
 *.pyc

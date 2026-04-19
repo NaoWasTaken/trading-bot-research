@@ -33,7 +33,7 @@ from brokers import (
 )
 from config import Settings, load_settings
 from risk import PositionPlan, build_position_plan
-from storage import DecisionLog, RecentDecisionLog, TradingLogStore
+from storage import DecisionLog, RecentDecisionLog, TradingLogStore, append_forward_test_log
 from strategies import SignalDecision, generate_signal_for_strategy, get_all_strategies, get_strategy
 
 LOGGER = logging.getLogger("trading_bot")
@@ -284,7 +284,15 @@ def extract_order_id(response: dict) -> str | None:
     return None
 
 
-def log_cycle_result(store: TradingLogStore, record: DecisionLog) -> None:
+def log_cycle_result(
+    store: TradingLogStore,
+    record: DecisionLog,
+    *,
+    settings: Settings | None = None,
+    snapshot: MarketSnapshot | None = None,
+) -> None:
+    append_forward_test_csv_if_available(record, settings=settings, snapshot=snapshot)
+
     if should_skip_duplicate_forward_test_log(store, record):
         print("Already logged this completed candle; skipping duplicate log.")
         LOGGER.info(
@@ -304,6 +312,30 @@ def log_cycle_result(store: TradingLogStore, record: DecisionLog) -> None:
         record.order_placed,
         record.forward_test,
     )
+
+
+def append_forward_test_csv_if_available(
+    record: DecisionLog,
+    *,
+    settings: Settings | None,
+    snapshot: MarketSnapshot | None,
+) -> None:
+    if settings is None or snapshot is None:
+        return
+
+    result = append_forward_test_log(
+        csv_path=settings.db_path.parent / "forward_test_log.csv",
+        record=record,
+        pricing_status=snapshot.pricing.status,
+        bid=snapshot.pricing.bid,
+        ask=snapshot.pricing.ask,
+        spread_pips=snapshot.spread_pips,
+        max_spread_pips=settings.max_spread_pips,
+    )
+    if result.appended:
+        LOGGER.info("Appended forward-test CSV row | path=%s | candle=%s", result.path, record.candle_time)
+    elif result.duplicate:
+        LOGGER.info("Skipped duplicate forward-test CSV row | path=%s | candle=%s", result.path, record.candle_time)
 
 
 def should_skip_duplicate_forward_test_log(store: TradingLogStore, record: DecisionLog) -> bool:
@@ -1294,7 +1326,7 @@ def run_cycle(
             has_open_position=has_open_position,
             dry_run=settings.dry_run,
         )
-        log_cycle_result(store, record)
+        log_cycle_result(store, record, settings=settings, snapshot=snapshot)
         return
 
     strategy = get_strategy(settings.strategy_name)
@@ -1361,7 +1393,7 @@ def run_cycle(
             stop_loss_price=stop_loss_price,
             error_message=plan_error,
         )
-        log_cycle_result(store, record)
+        log_cycle_result(store, record, settings=settings, snapshot=snapshot)
         return
 
     order_requested = True
@@ -1385,7 +1417,7 @@ def run_cycle(
             stop_loss_price=stop_loss_price,
             error_message=plan_error,
         )
-        log_cycle_result(store, record)
+        log_cycle_result(store, record, settings=settings, snapshot=snapshot)
         return
 
     if trade_blockers:
@@ -1403,7 +1435,7 @@ def run_cycle(
             stop_loss_price=stop_loss_price,
             error_message=plan_error,
         )
-        log_cycle_result(store, record)
+        log_cycle_result(store, record, settings=settings, snapshot=snapshot)
         return
 
     assert position_plan is not None
@@ -1440,7 +1472,7 @@ def run_cycle(
             order_id=order_id,
             broker_response=response,
         )
-        log_cycle_result(store, record)
+        log_cycle_result(store, record, settings=settings, snapshot=snapshot)
         return
     except Exception as exc:
         broker_response = exc.payload if isinstance(exc, OandaApiError) else None
@@ -1459,7 +1491,7 @@ def run_cycle(
             broker_response=broker_response,
             error_message=str(exc),
         )
-        log_cycle_result(store, record)
+        log_cycle_result(store, record, settings=settings, snapshot=snapshot)
         return
 
 
