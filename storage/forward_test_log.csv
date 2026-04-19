@@ -1,2 +1,1 @@
-run_timestamp,candle_time,instrument,timeframe,strategy,action,reason,price,rsi,ema200,atr,atr_median,trend_filter_status,atr_filter_status,pricing_status,bid,ask,spread_pips,max_spread_pips,dry_run,forward_test,order_requested,order_placed,has_open_position,error_message
-2026-04-19T22:04:58.681887+00:00,2026-04-17T17:00:00.000000000Z,GBP_USD,H4,rsi_reversion_filtered_v1,HOLD,RSI14 48.84 is between reversion thresholds. No order requested because signal is HOLD.,1.35184,48.84495359611755,1.3418667623017828,0.003199913584257243,0.0038534902645970294,not evaluated for non-entry signal,not evaluated for non-entry signal,tradeable,1.34757,1.34772,1.500000000000945,2.0,true,true,false,false,false,
+
