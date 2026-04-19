@@ -1,0 +1,91 @@
+name: Forward Test Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "5 */4 * * *"
+
+jobs:
+  forward-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create .env
+        run: |
+          cat > .env <<EOF
+          OANDA_API_KEY=${{ secrets.OANDA_API_KEY }}
+          OANDA_ACCOUNT_ID=${{ secrets.OANDA_ACCOUNT_ID }}
+          OANDA_ENV=practice
+          DRY_RUN=true
+          FORWARD_TEST_MODE=true
+
+          STRATEGY=rsi_reversion_filtered_v1
+          SELECTED_COMPARE_STRATEGY=rsi_reversion_filtered_v1
+
+          INSTRUMENT=GBP_USD
+          FOREX_INSTRUMENTS=GBP_USD
+          TIMEFRAMES=H4
+          GRANULARITY=H4
+          CANDLE_COUNT=300
+          FIXED_UNITS=100
+
+          TREND_FILTER_EMA_PERIOD=200
+          BREAKOUT_LOOKBACK=50
+
+          RSI_PERIOD=14
+          RSI_OVERSOLD=30
+          RSI_OVERBOUGHT=70
+          RSI_EXIT_LEVEL=50
+          RSI_ALLOW_SHORTS=false
+
+          RSI_FILTER_TREND_MODE=against_trend
+          RSI_FILTER_ATR_MODE=below_median
+          RSI_FILTER_ATR_MEDIAN_PERIOD=100
+          RSI_FILTER_SESSION=off
+
+          ATR_PERIOD=14
+          ATR_MULTIPLIER=1.5
+          STOP_LOSS_PIPS=10
+          MAX_SPREAD_PIPS=2.0
+
+          BACKTEST_CANDLE_COUNT=10000
+          BACKTEST_START_DATE=2020-01-01
+          BACKTEST_END_DATE=2026-04-17
+          BACKTEST_STARTING_EQUITY=10000
+          BACKTEST_SPREAD_PIPS=3.0
+          BACKTEST_SLIPPAGE_PIPS=1.0
+
+          WALK_FORWARD_INSTRUMENT=GBP_USD
+          WALK_FORWARD_TIMEFRAME=H4
+          WALK_FORWARD_STRATEGY=rsi_reversion_filtered_v1
+          WALK_FORWARD_START_DATE=2020-01-01
+          WALK_FORWARD_END_DATE=2026-04-17
+          WALK_FORWARD_WINDOW_MONTHS=6
+
+          POLL_INTERVAL_SECONDS=300
+          EOF
+
+      - name: Run forward test once
+        run: python main.py --once
+
+      - name: Upload logs and storage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forward-test-artifacts
+          path: |
+            logs/
+            storage/
