@@ -1,0 +1,9 @@
+.env
+logs/
+storage/*.sqlite3
+storage/*.db
+storage/*.csv
+storage/*.txt
+__pycache__/
+*.pyc
+.venv/
